@@ -20,6 +20,7 @@ package org.apache.flume.sink.elasticsearch.client;
 
 import org.apache.flume.sink.elasticsearch.ElasticSearchEventSerializer;
 import org.apache.flume.sink.elasticsearch.ElasticSearchIndexRequestBuilderFactory;
+import org.apache.flume.sink.elasticsearch.ElasticSearchUpdateRequestBuilderFactory;
 
 /**
  * Internal ElasticSearch client factory. Responsible for creating instance
@@ -39,15 +40,20 @@ public class ElasticSearchClientFactory {
    *    Elasticsearch cluster name used only by Transport Client
    * @param serializer
    *    Serializer of flume events to elasticsearch documents
+   * @param indexBuilder
+   * @param updateBuilder
    * @return
    */
   public ElasticSearchClient getClient(String clientType, String[] hostNames,
-      String clusterName, ElasticSearchEventSerializer serializer,
-      ElasticSearchIndexRequestBuilderFactory indexBuilder) throws NoSuchClientTypeException {
+                                       String clusterName, ElasticSearchEventSerializer serializer,
+                                       ElasticSearchIndexRequestBuilderFactory indexBuilder,
+                                       ElasticSearchUpdateRequestBuilderFactory updateBuilder) throws NoSuchClientTypeException {
     if (clientType.equalsIgnoreCase(TransportClient) && serializer != null) {
       return new ElasticSearchTransportClient(hostNames, clusterName, serializer);
     } else if (clientType.equalsIgnoreCase(TransportClient) && indexBuilder != null) { 
       return new ElasticSearchTransportClient(hostNames, clusterName, indexBuilder);
+    } else if (clientType.equalsIgnoreCase(TransportClient) && updateBuilder != null) {
+      return new ElasticSearchTransportClient(hostNames, clusterName, updateBuilder);
     } else if (clientType.equalsIgnoreCase(RestClient) && serializer != null) {
       return new ElasticSearchRestClient(hostNames, serializer);
     }
@@ -61,14 +67,17 @@ public class ElasticSearchClientFactory {
    * @param serializer Serializer for the event
    * @param indexBuilder Index builder factory
    *
+   * @param updateRequestFactory
    * @return Local elastic search instance client
    */
   public ElasticSearchClient getLocalClient(String clientType, ElasticSearchEventSerializer serializer,
-          ElasticSearchIndexRequestBuilderFactory indexBuilder) throws NoSuchClientTypeException {
+                                            ElasticSearchIndexRequestBuilderFactory indexBuilder, ElasticSearchUpdateRequestBuilderFactory updateBuilder) throws NoSuchClientTypeException {
     if (clientType.equalsIgnoreCase(TransportClient) && serializer != null) {
       return new ElasticSearchTransportClient(serializer);
     } else if (clientType.equalsIgnoreCase(TransportClient) && indexBuilder != null)  {
       return new ElasticSearchTransportClient(indexBuilder);
+    } else if (clientType.equalsIgnoreCase(TransportClient) && updateBuilder != null)  {
+      return new ElasticSearchTransportClient(updateBuilder);
     } else if (clientType.equalsIgnoreCase(RestClient)) {
     }
     throw new NoSuchClientTypeException();

@@ -22,6 +22,7 @@
 
   <groupId>org.apache.flume.flume-ng-sinks</groupId>
   <artifactId>flume-ng-elasticsearch-sink</artifactId>
+  <version>1.7.0.VPRO-SNAPSHOT</version>
   <name>Flume NG ElasticSearch Sink</name>
 
   <build>

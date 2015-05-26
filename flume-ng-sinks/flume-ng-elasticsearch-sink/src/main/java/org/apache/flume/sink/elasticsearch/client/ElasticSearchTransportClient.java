@@ -24,10 +24,12 @@ import org.apache.flume.Context;
 import org.apache.flume.Event;
 import org.apache.flume.EventDeliveryException;
 import org.apache.flume.sink.elasticsearch.ElasticSearchEventSerializer;
+import org.apache.flume.sink.elasticsearch.ElasticSearchUpdateRequestBuilderFactory;
 import org.apache.flume.sink.elasticsearch.IndexNameBuilder;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.update.UpdateRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
@@ -51,6 +53,7 @@ public class ElasticSearchTransportClient implements ElasticSearchClient {
   private InetSocketTransportAddress[] serverAddresses;
   private ElasticSearchEventSerializer serializer;
   private ElasticSearchIndexRequestBuilderFactory indexRequestBuilderFactory;
+  private ElasticSearchUpdateRequestBuilderFactory updateRequestBuilderFactory;
   private BulkRequestBuilder bulkRequestBuilder;
 
   private Client client;
@@ -86,6 +89,13 @@ public class ElasticSearchTransportClient implements ElasticSearchClient {
     openClient(clusterName);
   }
   
+  public ElasticSearchTransportClient(String[] hostNames, String clusterName,
+      ElasticSearchUpdateRequestBuilderFactory updateBuilder) {
+    configureHostnames(hostNames);
+    this.updateRequestBuilderFactory = updateBuilder;
+    openClient(clusterName);
+  }
+  
   /**
    * Local transport client only for testing
    * 
@@ -93,6 +103,16 @@ public class ElasticSearchTransportClient implements ElasticSearchClient {
    */
   public ElasticSearchTransportClient(ElasticSearchIndexRequestBuilderFactory indexBuilderFactory) {
     this.indexRequestBuilderFactory = indexBuilderFactory;
+    openLocalDiscoveryClient();
+  }
+
+  /**
+   * Local transport client only for testing
+   *
+   * @param updateBuilderFactory
+   */
+  public ElasticSearchTransportClient(ElasticSearchUpdateRequestBuilderFactory updateBuilderFactory) {
+    this.updateRequestBuilderFactory = updateBuilderFactory;
     openLocalDiscoveryClient();
   }
   
@@ -160,13 +180,18 @@ public class ElasticSearchTransportClient implements ElasticSearchClient {
     }
 
     IndexRequestBuilder indexRequestBuilder = null;
-    if (indexRequestBuilderFactory == null) {
-      indexRequestBuilder = client
-          .prepareIndex(indexNameBuilder.getIndexName(event), indexType)
-          .setSource(serializer.getContentBuilder(event).bytes());
+    if (indexRequestBuilderFactory != null) {
+        indexRequestBuilder = indexRequestBuilderFactory.createIndexRequest(
+            client, indexNameBuilder.getIndexPrefix(event), indexType, event);
+    } else if (updateRequestBuilderFactory != null) {
+        UpdateRequestBuilder updateRequest = updateRequestBuilderFactory.createUpdateRequest(
+            client, indexNameBuilder.getIndexPrefix(event), indexType, event);
+        bulkRequestBuilder.add(updateRequest);
+        return;
     } else {
-      indexRequestBuilder = indexRequestBuilderFactory.createIndexRequest(
-          client, indexNameBuilder.getIndexPrefix(event), indexType, event);
+        indexRequestBuilder = client
+            .prepareIndex(indexNameBuilder.getIndexName(event), indexType)
+            .setSource(serializer.getContentBuilder(event).bytes());
     }
 
     if (ttlMs > 0) {

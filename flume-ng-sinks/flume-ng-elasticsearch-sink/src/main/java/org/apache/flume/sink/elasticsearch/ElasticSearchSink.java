@@ -109,6 +109,7 @@ public class ElasticSearchSink extends AbstractSink implements Configurable {
   private Context elasticSearchClientContext = null;
 
   private ElasticSearchIndexRequestBuilderFactory indexRequestFactory;
+  private ElasticSearchUpdateRequestBuilderFactory updateRequestFactory;
   private ElasticSearchEventSerializer eventSerializer;
   private IndexNameBuilder indexNameBuilder;
   private SinkCounter sinkCounter;
@@ -288,9 +289,13 @@ public class ElasticSearchSink extends AbstractSink implements Configurable {
       Configurable serializer = clazz.newInstance();
 
       if (serializer instanceof ElasticSearchIndexRequestBuilderFactory) {
-        indexRequestFactory
-            = (ElasticSearchIndexRequestBuilderFactory) serializer;
-        indexRequestFactory.configure(serializerContext);
+          indexRequestFactory
+              = (ElasticSearchIndexRequestBuilderFactory)serializer;
+          indexRequestFactory.configure(serializerContext);
+      } else if (serializer instanceof ElasticSearchUpdateRequestBuilderFactory) {
+        updateRequestFactory
+            = (ElasticSearchUpdateRequestBuilderFactory) serializer;
+        updateRequestFactory.configure(serializerContext);
       } else if (serializer instanceof ElasticSearchEventSerializer) {
         eventSerializer = (ElasticSearchEventSerializer) serializer;
         eventSerializer.configure(serializerContext);
@@ -352,10 +357,10 @@ public class ElasticSearchSink extends AbstractSink implements Configurable {
     try {
       if (isLocal) {
         client = clientFactory.getLocalClient(
-            clientType, eventSerializer, indexRequestFactory);
+            clientType, eventSerializer, indexRequestFactory, updateRequestFactory);
       } else {
         client = clientFactory.getClient(clientType, serverAddresses,
-            clusterName, eventSerializer, indexRequestFactory);
+            clusterName, eventSerializer, indexRequestFactory, updateRequestFactory);
         client.configure(elasticSearchClientContext);
       }
       sinkCounter.incrementConnectionCreatedCount();
